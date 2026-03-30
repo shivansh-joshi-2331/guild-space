@@ -50,9 +50,11 @@ export const useGameStore = create(
         return false;
       },
 
+      _presenceInitialized: false,
       initPresence: () => {
         const { currentUser, myPosition } = get();
-        if (!currentUser) return;
+        if (!currentUser || get()._presenceInitialized) return;
+        set({ _presenceInitialized: true });
         
         presenceChannel
           .on('presence', { event: 'sync' }, () => {
@@ -85,7 +87,7 @@ export const useGameStore = create(
 
       logout: () => {
         presenceChannel.untrack();
-        set({ currentUser: null, players: {}, chatBubbles: {}, focusMode: false, isAfk: false });
+        set({ currentUser: null, players: {}, chatBubbles: {}, focusMode: false, isAfk: false, _presenceInitialized: false });
       },
       
       setMyPosition: (x, y, direction) => {

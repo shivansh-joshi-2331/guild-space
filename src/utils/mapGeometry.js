@@ -50,7 +50,7 @@ export const FURNITURE = [
   // === HARSHIL's Cabin (Top-Left: 1-23, 1-13) ===
   { sprite: 'table.png', x: 6, y: 2, w: 6, h: 4 },
   { sprite: 'monitor.png', x: 8, y: 1, w: 3, h: 3 },
-  { sprite: 'laptop.png', x: 12, y: 3, w: 2, h: 2 },
+  { sprite: 'laptop.png', x: 11, y: 2, w: 2, h: 2 },
   { sprite: 'chair.png', x: 9, y: 5, w: 2, h: 2 },
   { sprite: 'plant.png', x: 2, y: 2, w: 2, h: 2 },
   { sprite: 'cactus.png', x: 20, y: 2, w: 2, h: 3 },
@@ -58,7 +58,7 @@ export const FURNITURE = [
   // === TWISHA's Cabin (Top-Right: 40-62, 1-13) ===
   { sprite: 'table.png', x: 44, y: 2, w: 6, h: 4 },
   { sprite: 'monitor.png', x: 46, y: 1, w: 3, h: 3 },
-  { sprite: 'laptop.png', x: 50, y: 3, w: 2, h: 2 },
+  { sprite: 'laptop.png', x: 49, y: 2, w: 2, h: 2 },
   { sprite: 'chair.png', x: 47, y: 5, w: 2, h: 2 },
   { sprite: 'plant.png', x: 41, y: 11, w: 2, h: 2 },
   { sprite: 'plant.png', x: 58, y: 2, w: 2, h: 2 },
@@ -66,7 +66,7 @@ export const FURNITURE = [
   // === MEET's Cabin (Bottom-Left: 1-23, 22-34) ===
   { sprite: 'table.png', x: 6, y: 22, w: 6, h: 4 },
   { sprite: 'monitor.png', x: 8, y: 21, w: 3, h: 3 },
-  { sprite: 'laptop.png', x: 12, y: 23, w: 2, h: 2 },
+  { sprite: 'laptop.png', x: 11, y: 22, w: 2, h: 2 },
   { sprite: 'chair.png', x: 9, y: 25, w: 2, h: 2 },
   { sprite: 'cactus.png', x: 2, y: 30, w: 2, h: 3 },
   { sprite: 'plant.png', x: 20, y: 22, w: 2, h: 2 },
@@ -74,7 +74,7 @@ export const FURNITURE = [
   // === SHIVANSH's Cabin (Bottom-Right: 40-62, 22-34) ===
   { sprite: 'table.png', x: 44, y: 22, w: 6, h: 4 },
   { sprite: 'monitor.png', x: 46, y: 21, w: 3, h: 3 },
-  { sprite: 'laptop.png', x: 50, y: 23, w: 2, h: 2 },
+  { sprite: 'laptop.png', x: 49, y: 22, w: 2, h: 2 },
   { sprite: 'chair.png', x: 47, y: 25, w: 2, h: 2 },
   { sprite: 'plant.png', x: 58, y: 30, w: 2, h: 2 },
   { sprite: 'cactus.png', x: 41, y: 22, w: 2, h: 3 },
