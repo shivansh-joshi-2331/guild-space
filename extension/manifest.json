@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Guild Space",
+  "version": "1.0",
+  "description": "Among Us style productivity side panel",
+  "permissions": ["sidePanel", "notifications", "storage", "alarms"],
+  "side_panel": { "default_path": "sidepanel.html" },
+  "background": { "service_worker": "background.js" },
+  "action": { "default_title": "Open Guild Space" }
+}

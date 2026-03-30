@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-base: #000000;
+  --color-bg-floor: #748b94;
+  --color-bg-wall-top: #426170;
+  --color-bg-wall-side: #28353d;
+  --color-accent-gold: #f5c518;
+  --color-accent-red: #e63946;
+  --color-accent-green: #4ade80;
+  --color-text-primary: #e2e8f0;
+  --color-text-muted: #64748b;
+  --font-pixel: "Press Start 2P", system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-bg-base text-text-primary font-pixel antialiased;
+    image-rendering: pixelated;
+    overflow: hidden; /* Avoid scrollbars in an app */
+    margin: 0;
+  }
+}
+
+@layer utilities {
+  .pixel-shadow {
+    box-shadow: 2px 2px 0 #000;
+  }
+  
+  .pixel-corners {
+    border-radius: 0 !important;
+  }
+
+  /* Striped warning borders for map edges */
+  .wall-border-top {
+    border-top: 4px dashed #fff;
+    border-image: repeating-linear-gradient(-45deg, #fff, #fff 4px, #000 4px, #000 8px) 4;
+  }
+  
+  .wall-border-bottom {
+    border-bottom: 4px dashed #fff;
+    border-image: repeating-linear-gradient(-45deg, #fff, #fff 4px, #000 4px, #000 8px) 4;
+  }
+
+  .wall-border-left {
+    border-left: 4px dashed #fff;
+    border-image: repeating-linear-gradient(-45deg, #fff, #fff 4px, #000 4px, #000 8px) 4;
+  }
+
+  .wall-border-right {
+    border-right: 4px dashed #fff;
+    border-image: repeating-linear-gradient(-45deg, #fff, #fff 4px, #000 4px, #000 8px) 4;
+  }
+
+  /* 3D Wall styling */
+  .map-wall {
+    background-color: var(--color-bg-wall-top);
+    border: 4px solid #000;
+    box-shadow: inset 0 -24px 0 var(--color-bg-wall-side);
+  }
+
+  .map-floor {
+    background-color: var(--color-bg-floor);
+    /* Subtle floor grid/paneling */
+    background-image: 
+      linear-gradient(rgba(0,0,0,0.1) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(0,0,0,0.1) 2px, transparent 2px);
+    background-size: 64px 64px;
+    background-position: center;
+  }
+
+  /* Emergency flicker animation */
+  @keyframes flicker {
+    0% { background-color: rgba(230, 57, 70, 0); }
+    10% { background-color: rgba(230, 57, 70, 0.4); }
+    20% { background-color: rgba(230, 57, 70, 0); }
+    50% { background-color: rgba(230, 57, 70, 0.3); }
+    80% { background-color: rgba(230, 57, 70, 0); }
+    100% { background-color: rgba(230, 57, 70, 0.4); }
+  }
+
+  .emergency-flicker {
+    animation: flicker 1.5s steps(1) forwards;
+  }
+}
