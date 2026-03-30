@@ -3,7 +3,7 @@ import { useGameStore } from '../store/useGameStore';
 import { useMovement } from '../hooks/useMovement';
 import Character from './Character';
 import { motion } from 'framer-motion';
-import { TILE_SIZE, MAP_WIDTH_TILES, MAP_HEIGHT_TILES, WALLS, DOORS, DESKS } from '../utils/mapGeometry';
+import { TILE_SIZE, MAP_WIDTH_TILES, MAP_HEIGHT_TILES, WALLS, DOORS, DESKS, FURNITURE } from '../utils/mapGeometry';
 import { notificationsChannel } from '../lib/supabase';
 
 export default function GameCanvas() {
@@ -49,6 +49,12 @@ export default function GameCanvas() {
         {/* FLOOR */}
         <div className="absolute inset-0 map-floor" />
 
+        {/* CABIN FLOORS — warm wooden flooring */}
+        <div className="absolute cabin-floor z-[1]" style={{ left: 1*TILE_SIZE, top: 1*TILE_SIZE, width: 23*TILE_SIZE, height: 13*TILE_SIZE }} />
+        <div className="absolute cabin-floor z-[1]" style={{ left: 40*TILE_SIZE, top: 1*TILE_SIZE, width: 23*TILE_SIZE, height: 13*TILE_SIZE }} />
+        <div className="absolute cabin-floor z-[1]" style={{ left: 1*TILE_SIZE, top: 22*TILE_SIZE, width: 23*TILE_SIZE, height: 13*TILE_SIZE }} />
+        <div className="absolute cabin-floor z-[1]" style={{ left: 40*TILE_SIZE, top: 22*TILE_SIZE, width: 23*TILE_SIZE, height: 13*TILE_SIZE }} />
+
         {/* MAP GEOMETRY */}
         {WALLS.map((wall, i) => (
           <div 
@@ -85,20 +91,36 @@ export default function GameCanvas() {
           );
         })}
         
-        {/* DESKS */}
+        {/* FURNITURE SPRITES */}
+        {FURNITURE.map((item, i) => (
+          <img
+            key={`furniture-${i}`}
+            src={`/sprites/${item.sprite}`}
+            alt={item.sprite}
+            className="absolute z-[5] pointer-events-none"
+            draggable={false}
+            style={{
+              left: item.x * TILE_SIZE,
+              top: item.y * TILE_SIZE,
+              width: item.w * TILE_SIZE,
+              height: item.h * TILE_SIZE,
+              imageRendering: 'pixelated',
+            }}
+          />
+        ))}
+
+        {/* DESK INTERACTION ZONES (invisible, for E key) */}
         {DESKS.map((desk, i) => (
           <div
             key={`desk-${i}`}
-            className="absolute z-10 bg-amber-900/60 border-2 border-amber-700 flex items-center justify-center pixel-shadow"
+            className="absolute z-[6] pointer-events-none"
             style={{
               left: desk.x * TILE_SIZE,
               top: desk.y * TILE_SIZE,
               width: desk.w * TILE_SIZE,
-              height: desk.h * TILE_SIZE
+              height: desk.h * TILE_SIZE,
             }}
-          >
-            <span className="text-[8px] text-amber-300 font-pixel">🖥️</span>
-          </div>
+          />
         ))}
 
         {/* Floor Text Overlays */}
