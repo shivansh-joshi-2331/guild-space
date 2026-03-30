@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { useGameStore } from './useGameStore';
 
 export const useTaskStore = create((set, get) => ({
   tasks: [],

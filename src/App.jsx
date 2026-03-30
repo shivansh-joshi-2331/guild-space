@@ -12,7 +12,6 @@ function App() {
   const { currentUser } = useGameStore();
   const { tasks } = useTaskStore();
   const [toast, setToast] = useState(null);
-  const prevTasksRef = useRef(tasks);
 
   useEffect(() => {
     const handleNotification = (e) => {
