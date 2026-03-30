@@ -24,6 +24,7 @@ function App() {
 
   useEffect(() => {
     if (currentUser) {
+      useGameStore.getState().initPresence();
       useTaskStore.getState().subscribeToTasks();
       
       notificationsChannel.on('broadcast', { event: 'knock' }, ({ payload }) => {
