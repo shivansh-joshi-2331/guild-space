@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
-import { MAP_WIDTH_TILES, MAP_HEIGHT_TILES, WALLS, DOORS } from '../utils/mapGeometry';
+import { MAP_WIDTH_TILES, MAP_HEIGHT_TILES, WALLS, DOORS, DESKS } from '../utils/mapGeometry';
 import { notificationsChannel } from '../lib/supabase';
 
 const MOVES = {
@@ -14,9 +14,10 @@ const MOVES = {
   ArrowRight: { dx: 1, dy: 0 },
 };
 
-const TILE_SPEED = 10; // tiles per second
-const PLAYER_SIZE = 0.8; // bounding box relative to tile size
+const TILE_SPEED = 10;
+const PLAYER_SIZE = 0.8;
 const OFFSET = 0.1;
+const AFK_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 const isColliding = (px, py, pw, ph, rect) => {
   return px < rect.x + rect.w &&
@@ -25,18 +26,30 @@ const isColliding = (px, py, pw, ph, rect) => {
          py + ph > rect.y;
 };
 
+const isNearDesk = (px, py, desk) => {
+  return Math.abs(px - desk.x) < 3 && Math.abs(py - desk.y) < 3;
+};
+
 let lastKnockTime = 0;
 const triggerKnock = (door) => {
   const now = performance.now();
   if (now - lastKnockTime > 2000) {
     lastKnockTime = now;
     
-    // Dispatch in-game notification event locally
+    // Check if door owner has focus mode — if so, block the knock
+    const players = useGameStore.getState().players;
+    const ownerPlayer = Object.values(players).find(p => p.member_id === door.ownerId);
+    if (ownerPlayer?.focusMode) {
+      window.dispatchEvent(new CustomEvent('in-game-notification', {
+        detail: { message: `🔒 ${door.ownerName} is in Deep Focus mode! Cannot knock right now.` }
+      }));
+      return;
+    }
+
     window.dispatchEvent(new CustomEvent('in-game-notification', {
       detail: { message: `🗯️ *BAM BAM BAM* You aggressively knocked on ${door.ownerName}'s door! (Notification Sent)` }
     }));
 
-    // Broadcast knock globally!
     const knockerName = useGameStore.getState().currentUser?.name || 'Someone';
     notificationsChannel.send({
       type: 'broadcast',
@@ -62,7 +75,7 @@ const triggerKnock = (door) => {
       playKnock(0);
       playKnock(0.15);
       playKnock(0.3);
-    } catch(e) {}
+    } catch (_err) { /* audio not available */ }
   }
 };
 
@@ -73,6 +86,7 @@ export function useMovement() {
     const activeKeys = new Set();
     let rAF;
     let lastTime = performance.now();
+    let lastActivityTime = Date.now();
 
     const checkWalls = (nx, ny) => {
       for (const wall of WALLS) {
@@ -89,13 +103,25 @@ export function useMovement() {
       return null;
     };
 
+    // AFK check interval
+    const afkInterval = setInterval(() => {
+      const elapsed = Date.now() - lastActivityTime;
+      if (elapsed > AFK_TIMEOUT) {
+        useGameStore.getState().setAfk(true);
+      }
+    }, 10000);
+
     const loop = (time) => {
-      const dt = Math.min((time - lastTime) / 1000, 0.1); // caps dt at max 100ms
+      const dt = Math.min((time - lastTime) / 1000, 0.1);
       lastTime = time;
 
       const { myPosition, currentUser } = useGameStore.getState();
 
       if (activeKeys.size > 0 && currentUser) {
+        // Any movement resets AFK
+        lastActivityTime = Date.now();
+        useGameStore.getState().setAfk(false);
+
         let dx = 0;
         let dy = 0;
 
@@ -128,16 +154,13 @@ export function useMovement() {
         if (dx > 0) dir = 'right';
         else if (dx < 0) dir = 'left';
 
-        // Limit map boundaries just in case
         if (newX < 0) newX = 0;
         if (newX >= MAP_WIDTH_TILES) newX = MAP_WIDTH_TILES - 1;
         if (newY < 0) newY = 0;
         if (newY >= MAP_HEIGHT_TILES) newY = MAP_HEIGHT_TILES - 1;
 
         if (hitDoor && hitDoor.ownerId !== currentUser.id) {
-           // It's not our door!
            triggerKnock(hitDoor);
-           // Block movement into it
            newX = myPosition.x;
            newY = myPosition.y;
         }
@@ -151,7 +174,45 @@ export function useMovement() {
     };
 
     const handleKeyDown = (e) => {
-      if (MOVES[e.code]) activeKeys.add(e.code);
+      if (MOVES[e.code]) {
+        activeKeys.add(e.code);
+        lastActivityTime = Date.now();
+      }
+      
+      // F key = Toggle Focus Mode
+      if (e.code === 'KeyF' && !e.repeat) {
+        useGameStore.getState().toggleFocusMode();
+      }
+
+      // E key = Desk Interaction
+      if (e.code === 'KeyE' && !e.repeat) {
+        const { myPosition, currentUser, deskUrls, setDeskUrl } = useGameStore.getState();
+        for (const desk of DESKS) {
+          if (isNearDesk(myPosition.x, myPosition.y, desk)) {
+            if (desk.ownerId === currentUser.id) {
+              // It's our desk — set URL
+              const url = prompt('Paste your active Figma link:');
+              if (url && url.trim()) {
+                setDeskUrl(desk.ownerId, url.trim());
+                window.dispatchEvent(new CustomEvent('in-game-notification', {
+                  detail: { message: `🖥️ Figma link saved to your desk!` }
+                }));
+              }
+            } else {
+              // It's someone else's desk — open their URL
+              const savedUrl = deskUrls[desk.ownerId];
+              if (savedUrl) {
+                window.open(savedUrl, '_blank');
+              } else {
+                window.dispatchEvent(new CustomEvent('in-game-notification', {
+                  detail: { message: `🖥️ ${desk.ownerName}'s desk is empty — no Figma link set yet.` }
+                }));
+              }
+            }
+            break;
+          }
+        }
+      }
     };
 
     const handleKeyUp = (e) => {
@@ -166,6 +227,7 @@ export function useMovement() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
       cancelAnimationFrame(rAF);
+      clearInterval(afkInterval);
     };
   }, [setMyPosition]);
 }

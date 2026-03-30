@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { presenceChannel } from '../lib/supabase';
+import { presenceChannel, notificationsChannel, supabase } from '../lib/supabase';
 
 const PREDEFINED_USERS = {
   'Harshil': { id: 'user-h', name: 'Harshil', role: 'lead', color: '#d7263d', cabinId: 'cabin-tl' },
@@ -20,28 +20,31 @@ export const useGameStore = create(
   persist(
     (set, get) => ({
       currentUser: null,
-      myId: 'user-1', // Fallback
+      myId: 'user-1',
       myPosition: { x: 32, y: 18, direction: 'right' },
       myRoom: 'center',
-      players: {}, // Map of other players
+      players: {},
+      chatBubbles: {},
+      focusMode: false,
+      isAfk: false,
+      deskUrls: {},
       
       login: (username) => {
-        // Case-insensitive login
         const normalizedUsername = Object.keys(PREDEFINED_USERS).find(
           key => key.toLowerCase() === username.toLowerCase()
         );
-
         if (normalizedUsername) {
           const user = PREDEFINED_USERS[normalizedUsername];
           const spawn = SPAWN_POINTS[user.cabinId];
-          
           set({ 
             currentUser: user,
-            myId: user.id, // override myId
-            myPosition: { x: spawn.x, y: spawn.y, direction: 'right' }
+            myId: user.id,
+            myPosition: { x: spawn.x, y: spawn.y, direction: 'right' },
+            focusMode: false,
+            isAfk: false,
           });
-          
           get().initPresence();
+          get().fetchDeskUrls();
           return true;
         }
         return false;
@@ -58,9 +61,13 @@ export const useGameStore = create(
              for (const id in state) {
                 if (state[id].length > 0) {
                   const p = state[id][0];
-                  // Don't add ourselves to the remote players list
                   if (p.member_id !== currentUser.id) {
-                     updatedPlayers[p.member_id] = { position: p.position, name: p.name, color: p.color };
+                     updatedPlayers[p.member_id] = {
+                       position: p.position, name: p.name, color: p.color,
+                       member_id: p.member_id,
+                       focusMode: p.focusMode || false,
+                       isAfk: p.isAfk || false,
+                     };
                   }
                 }
              }
@@ -70,7 +77,7 @@ export const useGameStore = create(
              if (status === 'SUBSCRIBED') {
                 await presenceChannel.track({
                   member_id: currentUser.id, name: currentUser.name, color: currentUser.color,
-                  position: myPosition
+                  position: myPosition, focusMode: false, isAfk: false,
                 });
              }
           });
@@ -78,21 +85,100 @@ export const useGameStore = create(
 
       logout: () => {
         presenceChannel.untrack();
-        set({ currentUser: null, players: {} });
+        set({ currentUser: null, players: {}, chatBubbles: {}, focusMode: false, isAfk: false });
       },
       
       setMyPosition: (x, y, direction) => {
         const newPos = { x, y, direction: direction || get().myPosition.direction };
         set({ myPosition: newPos });
         
-        const { currentUser } = get();
+        const { currentUser, focusMode, isAfk } = get();
         if (currentUser && presenceChannel.state === 'joined') {
-           // Broadcast new position to other players
            presenceChannel.track({
               member_id: currentUser.id, name: currentUser.name, color: currentUser.color,
-              position: newPos
+              position: newPos, focusMode, isAfk,
            });
         }
+      },
+
+      // Chat
+      sendChat: (message) => {
+        const { currentUser } = get();
+        if (!currentUser) return;
+        
+        // Show locally
+        set((state) => ({
+          chatBubbles: { ...state.chatBubbles, [currentUser.id]: { message, timestamp: Date.now() } }
+        }));
+        setTimeout(() => {
+          set((state) => {
+            const updated = { ...state.chatBubbles };
+            delete updated[currentUser.id];
+            return { chatBubbles: updated };
+          });
+        }, 5000);
+
+        notificationsChannel.send({
+          type: 'broadcast', event: 'chat',
+          payload: { senderId: currentUser.id, senderName: currentUser.name, message }
+        });
+      },
+
+      receiveChatBubble: (senderId, message) => {
+        set((state) => ({
+          chatBubbles: { ...state.chatBubbles, [senderId]: { message, timestamp: Date.now() } }
+        }));
+        setTimeout(() => {
+          set((state) => {
+            const updated = { ...state.chatBubbles };
+            delete updated[senderId];
+            return { chatBubbles: updated };
+          });
+        }, 5000);
+      },
+
+      // Focus Mode
+      toggleFocusMode: () => {
+        const newFocus = !get().focusMode;
+        set({ focusMode: newFocus });
+        const { currentUser, myPosition, isAfk } = get();
+        if (currentUser && presenceChannel.state === 'joined') {
+          presenceChannel.track({
+            member_id: currentUser.id, name: currentUser.name, color: currentUser.color,
+            position: myPosition, focusMode: newFocus, isAfk,
+          });
+        }
+        window.dispatchEvent(new CustomEvent('in-game-notification', {
+          detail: { message: newFocus ? '🔒 Deep Focus Mode ON — Your cabin is locked!' : '🔓 Focus Mode OFF — Door unlocked!' }
+        }));
+      },
+
+      // AFK
+      setAfk: (afk) => {
+        if (get().isAfk === afk) return;
+        set({ isAfk: afk });
+        const { currentUser, myPosition, focusMode } = get();
+        if (currentUser && presenceChannel.state === 'joined') {
+          presenceChannel.track({
+            member_id: currentUser.id, name: currentUser.name, color: currentUser.color,
+            position: myPosition, focusMode, isAfk: afk,
+          });
+        }
+      },
+
+      // Desk Portals
+      fetchDeskUrls: async () => {
+        const { data } = await supabase.from('desks').select('*');
+        if (data) {
+          const urls = {};
+          data.forEach(d => { urls[d.id] = d.figma_url; });
+          set({ deskUrls: urls });
+        }
+      },
+
+      setDeskUrl: async (ownerId, url) => {
+        await supabase.from('desks').upsert({ id: ownerId, figma_url: url, updated_at: new Date().toISOString() });
+        set((state) => ({ deskUrls: { ...state.deskUrls, [ownerId]: url } }));
       },
       
       setMyRoom: (room) => set({ myRoom: room }),
@@ -104,4 +190,3 @@ export const useGameStore = create(
     }
   )
 );
-

@@ -76,7 +76,7 @@ export default function HUD() {
       {/* Bottom Center: Hint */}
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
         <div className="text-text-muted text-[8px] tracking-widest bg-black/80 px-4 py-2 pixel-corners border border-slate-700 animate-pulse">
-          [WASD] MOVE &nbsp;&nbsp;&nbsp; [T] TASKS
+          [WASD] MOVE &nbsp;&nbsp; [T] TASKS &nbsp;&nbsp; [ENTER] CHAT &nbsp;&nbsp; [F] FOCUS &nbsp;&nbsp; [E] DESK
         </div>
       </div>
 

@@ -33,7 +33,15 @@ function App() {
             detail: { message: `🔔 *BANG* ${payload.knockerName} is aggressively knocking on your door!` }
           }));
         }
-      }).subscribe();
+      });
+
+      notificationsChannel.on('broadcast', { event: 'chat' }, ({ payload }) => {
+        if (payload.senderId !== currentUser.id) {
+          useGameStore.getState().receiveChatBubble(payload.senderId, payload.message);
+        }
+      });
+
+      notificationsChannel.subscribe();
     }
   }, [currentUser]);
 

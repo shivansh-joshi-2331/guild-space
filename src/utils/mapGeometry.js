@@ -36,3 +36,10 @@ export const DOORS = {
   'cabin-bl': { id: 'cabin-bl', x: 24, y: 27, w: 1, h: 2, ownerId: 'user-m', ownerName: 'Meet' },
   'cabin-br': { id: 'cabin-br', x: 39, y: 27, w: 1, h: 2, ownerId: 'user-s', ownerName: 'Shivansh' },
 };
+
+export const DESKS = [
+  { x: 12, y: 4, w: 2, h: 2, ownerId: 'user-h', ownerName: 'Harshil' },
+  { x: 50, y: 4, w: 2, h: 2, ownerId: 'user-t', ownerName: 'Twisha' },
+  { x: 12, y: 24, w: 2, h: 2, ownerId: 'user-m', ownerName: 'Meet' },
+  { x: 50, y: 24, w: 2, h: 2, ownerId: 'user-s', ownerName: 'Shivansh' },
+];

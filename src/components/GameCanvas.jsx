@@ -1,12 +1,36 @@
+import { useState, useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { useMovement } from '../hooks/useMovement';
 import Character from './Character';
 import { motion } from 'framer-motion';
-import { TILE_SIZE, MAP_WIDTH_TILES, MAP_HEIGHT_TILES, WALLS, DOORS } from '../utils/mapGeometry';
+import { TILE_SIZE, MAP_WIDTH_TILES, MAP_HEIGHT_TILES, WALLS, DOORS, DESKS } from '../utils/mapGeometry';
+import { notificationsChannel } from '../lib/supabase';
 
 export default function GameCanvas() {
-  const { myPosition } = useGameStore();
+  const { myPosition, players, currentUser, chatBubbles, sendChat } = useGameStore();
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatText, setChatText] = useState('');
   useMovement();
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.code === 'Enter' && !chatOpen) {
+        e.preventDefault();
+        setChatOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [chatOpen]);
+
+  const handleChatSubmit = (e) => {
+    e.preventDefault();
+    if (chatText.trim()) {
+      sendChat(chatText.trim());
+      setChatText('');
+    }
+    setChatOpen(false);
+  };
 
   return (
     <div className="w-full h-full flex items-center justify-center bg-black overflow-hidden relative">
@@ -40,24 +64,45 @@ export default function GameCanvas() {
         ))}
 
         {/* DOORS */}
-        {Object.values(DOORS).map((door, i) => (
+        {Object.values(DOORS).map((door, i) => {
+          const ownerPlayer = Object.values(players).find(p => p.member_id === door.ownerId);
+          const isFocused = ownerPlayer?.focusMode || (currentUser?.id === door.ownerId && useGameStore.getState().focusMode);
+          return (
+            <div
+              key={`door-${i}`}
+              className={`absolute border-2 z-10 flex items-center justify-center pixel-shadow ${isFocused ? 'bg-red-900/80 border-red-500' : 'bg-slate-800/80 border-slate-600'}`}
+              style={{
+                left: door.x * TILE_SIZE,
+                top: door.y * TILE_SIZE,
+                width: door.w * TILE_SIZE,
+                height: door.h * TILE_SIZE
+              }}
+            >
+              <span className={`text-[6px] rotate-90 opacity-70 font-pixel ${isFocused ? 'text-red-300' : 'text-white opacity-50'}`}>
+                {isFocused ? '🔒 DND' : 'DOOR'}
+              </span>
+            </div>
+          );
+        })}
+        
+        {/* DESKS */}
+        {DESKS.map((desk, i) => (
           <div
-            key={`door-${i}`}
-            className="absolute bg-slate-800/80 border-2 border-slate-600 z-10 flex items-center justify-center pixel-shadow"
+            key={`desk-${i}`}
+            className="absolute z-10 bg-amber-900/60 border-2 border-amber-700 flex items-center justify-center pixel-shadow"
             style={{
-              left: door.x * TILE_SIZE,
-              top: door.y * TILE_SIZE,
-              width: door.w * TILE_SIZE,
-              height: door.h * TILE_SIZE
+              left: desk.x * TILE_SIZE,
+              top: desk.y * TILE_SIZE,
+              width: desk.w * TILE_SIZE,
+              height: desk.h * TILE_SIZE
             }}
           >
-            <span className="text-[6px] text-white rotate-90 opacity-50 font-pixel">DOOR</span>
+            <span className="text-[8px] text-amber-300 font-pixel">🖥️</span>
           </div>
         ))}
-        
+
         {/* Floor Text Overlays */}
         {Object.values(DOORS).map((door, i) => {
-          // Position the name inside the cabin
           const isLeft = door.x < 32;
           const isTop = door.y < 18;
           return (
@@ -79,17 +124,50 @@ export default function GameCanvas() {
           HALLWAY
         </div>
 
-        {/* CHARACTER */}
+        {/* LOCAL CHARACTER */}
         {myPosition && (
           <Character 
             x={myPosition.x} 
             y={myPosition.y} 
-            name={useGameStore.getState().currentUser?.name || "Red"} 
-            color={useGameStore.getState().currentUser?.color || "#d7263d"} 
-            direction={myPosition.direction} 
+            name={currentUser?.name || "Red"} 
+            color={currentUser?.color || "#d7263d"} 
+            direction={myPosition.direction}
+            chatMessage={chatBubbles?.[currentUser?.id]?.message}
+            isAfk={useGameStore.getState().isAfk}
+            isFocused={useGameStore.getState().focusMode}
           />
         )}
+
+        {/* REMOTE PLAYERS */}
+        {Object.entries(players).map(([id, player]) => (
+          <Character
+            key={id}
+            x={player.position?.x || 0}
+            y={player.position?.y || 0}
+            name={player.name || 'Unknown'}
+            color={player.color || '#888'}
+            direction={player.position?.direction || 'right'}
+            chatMessage={chatBubbles?.[id]?.message}
+            isAfk={player.isAfk}
+            isFocused={player.focusMode}
+          />
+        ))}
       </motion.div>
+
+      {/* CHAT INPUT BAR */}
+      {chatOpen && (
+        <form onSubmit={handleChatSubmit} className="absolute bottom-12 left-1/2 -translate-x-1/2 z-[200] w-80">
+          <input
+            autoFocus
+            value={chatText}
+            onChange={(e) => setChatText(e.target.value)}
+            onKeyDown={(e) => { if (e.code === 'Escape') setChatOpen(false); }}
+            placeholder="Type a message..."
+            className="w-full bg-black/90 border-2 border-accent-gold text-white px-3 py-2 text-xs font-pixel focus:outline-none"
+            maxLength={100}
+          />
+        </form>
+      )}
     </div>
   );
 }
