@@ -27,8 +27,21 @@ export const useTaskStore = create((set, get) => ({
     
     // Listen for any changes on the 'tasks' table
     supabase.channel('public:tasks')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, (payload) => {
-         get().fetchTasks(); // Refresh list intelligently
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'tasks' }, (payload) => {
+         const newTask = payload.new;
+         const currentUser = useGameStore.getState().currentUser;
+         if (newTask.assigned_to === currentUser?.id) {
+           window.dispatchEvent(new CustomEvent('in-game-notification', { detail: { message: `✅ NEW TASK ASSIGNED: ${newTask.title}` } }));
+         }
+         get().fetchTasks();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks' }, (payload) => {
+         const updatedTask = payload.new;
+         const currentUser = useGameStore.getState().currentUser;
+         if (updatedTask.assigned_to === currentUser?.id) {
+           window.dispatchEvent(new CustomEvent('in-game-notification', { detail: { message: `🔄 TASK UPDATE: '${updatedTask.title}' moved to ${updatedTask.status.replace('_', ' ').toUpperCase()}` } }));
+         }
+         get().fetchTasks();
       })
       .subscribe();
   },

@@ -6,9 +6,12 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'mock-anon-key
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 /**
- * Presence Logic setup
+ * Realtime Channels
  */
 export const presenceChannel = supabase.channel('guild-space-presence');
+export const notificationsChannel = supabase.channel('guild-space-notifications', {
+  config: { broadcast: { ack: true } }
+});
 
 export const joinPresence = (memberId, position, roomId) => {
   return presenceChannel.subscribe(async (status) => {

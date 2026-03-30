@@ -6,6 +6,7 @@ import NotificationPrompt from './components/NotificationPrompt';
 import LoginScreen from './components/LoginScreen';
 import { useGameStore } from './store/useGameStore';
 import { useTaskStore } from './store/useTaskStore';
+import { notificationsChannel } from './lib/supabase';
 
 function App() {
   const { currentUser } = useGameStore();
@@ -26,34 +27,16 @@ function App() {
     if (currentUser) {
       useGameStore.getState().initPresence();
       useTaskStore.getState().subscribeToTasks();
+      
+      notificationsChannel.on('broadcast', { event: 'knock' }, ({ payload }) => {
+        if (payload.ownerId === currentUser.id) {
+          window.dispatchEvent(new CustomEvent('in-game-notification', {
+            detail: { message: `🔔 *BANG* ${payload.knockerName} is aggressively knocking on your door!` }
+          }));
+        }
+      }).subscribe();
     }
   }, [currentUser]);
-
-  useEffect(() => {
-    if (!currentUser) return;
-    
-    const prevTasks = prevTasksRef.current;
-    
-    // Find new tasks assigned to me
-    const newTasks = tasks.filter(t => t.assigned_to === currentUser.id && Array.isArray(prevTasks) && !prevTasks.find(pt => pt.id === t.id));
-    if (newTasks.length > 0) {
-       window.dispatchEvent(new CustomEvent('in-game-notification', {
-        detail: { message: `✅ NEW TASK ASSIGNED: ${newTasks[0].title}` }
-       }));
-    }
-
-    // Find tasks assigned to me that changed status
-    if (Array.isArray(prevTasks)) {
-      const statusChangedTasks = tasks.filter(t => t.assigned_to === currentUser.id && prevTasks.find(pt => pt.id === t.id && pt.status !== t.status));
-      if (statusChangedTasks.length > 0) {
-         window.dispatchEvent(new CustomEvent('in-game-notification', {
-          detail: { message: `🔄 TASK UPDATE: '${statusChangedTasks[0].title}' moved to ${statusChangedTasks[0].status.replace('_', ' ').toUpperCase()}` }
-         }));
-      }
-    }
-
-    prevTasksRef.current = tasks;
-  }, [tasks, currentUser]);
 
   if (!currentUser) {
     return <LoginScreen />;

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useGameStore } from '../store/useGameStore';
 import { MAP_WIDTH_TILES, MAP_HEIGHT_TILES, WALLS, DOORS } from '../utils/mapGeometry';
+import { notificationsChannel } from '../lib/supabase';
 
 const MOVES = {
   KeyW: { dx: 0, dy: -1 },
@@ -30,10 +31,18 @@ const triggerKnock = (door) => {
   if (now - lastKnockTime > 2000) {
     lastKnockTime = now;
     
-    // Dispatch in-game notification event
+    // Dispatch in-game notification event locally
     window.dispatchEvent(new CustomEvent('in-game-notification', {
       detail: { message: `🗯️ *BAM BAM BAM* You aggressively knocked on ${door.ownerName}'s door! (Notification Sent)` }
     }));
+
+    // Broadcast knock globally!
+    const knockerName = useGameStore.getState().currentUser?.name || 'Someone';
+    notificationsChannel.send({
+      type: 'broadcast',
+      event: 'knock',
+      payload: { knockerName, ownerId: door.ownerId }
+    });
 
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
